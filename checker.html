@@ -39,6 +39,7 @@
     --info: #8FA2DA; --tint: #1C2A37; color-scheme: dark;
   }
 
+  [hidden] { display: none !important; }
   * { box-sizing: border-box; }
   body {
     background: var(--bg); color: var(--ink);
@@ -77,6 +78,8 @@
   .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+  .samples { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  .btn.small { padding: 9px 12px; font-size: 14px; }
   .msg { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--tint); }
   .msg.error { color: var(--bad); background: transparent; border: 1px solid var(--bad); }
   .msg.warn { color: var(--warn); background: transparent; border: 1px solid var(--warn); }
@@ -148,6 +151,13 @@
       <button class="btn" id="sample-btn">Use sample data</button>
     </div>
     <div class="msg error" id="error" role="alert" hidden></div>
+    <div class="samples">
+      <span>No files handy? Download two sample files, then upload them above.</span>
+      <div class="actions">
+        <button class="btn small" id="dl-books" type="button">Sample purchase register</button>
+        <button class="btn small" id="dl-gst" type="button">Sample GSTR-2B</button>
+      </div>
+    </div>
   </section>
 
   <section class="panel" aria-labelledby="result-h" id="results">
@@ -547,6 +557,25 @@ $("download").addEventListener("click", () => {
     say("Could not create the file" + (e && e.message ? ": " + e.message : "."));
   }
 });
+
+function downloadSample(which){
+  try {
+    if (typeof XLSX === "undefined") throw new Error("The spreadsheet writer did not load. Check your connection and reload the page.");
+    const sample = buildSample();
+    const isBooks = which === "books";
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(isBooks ? sample.books : sample.gst), isBooks ? "Purchase Register" : "B2B");
+    const data = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = isBooks ? "sample_purchase_register.xlsx" : "sample_gstr2b.xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (e) { showError(e.message || "Could not create the sample file."); }
+}
+$("dl-books").addEventListener("click", () => downloadSample("books"));
+$("dl-gst").addEventListener("click", () => downloadSample("gst"));
 
 /* Open with the sample so the page shows what it does. */
 (function(){ const s = buildSample(); runWith(s.books, s.gst, true); })();
